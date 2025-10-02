@@ -3,7 +3,6 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import Header from '@/app/components/Header'
 
 interface Post {
@@ -43,13 +42,15 @@ export default function EditPost({ params }: { params: { id: string } }) {
 
   const fetchPost = async () => {
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('id', postId)
-        .single()
+      const response = await fetch(`/api/blog/${postId}`, {
+        credentials: 'include'
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error('Failed to fetch post')
+      }
+
+      const data = await response.json()
       if (data) setPost(data)
     } catch (error) {
       console.error('Error fetching post:', error)
@@ -63,31 +64,42 @@ export default function EditPost({ params }: { params: { id: string } }) {
   const savePost = async () => {
     setSaving(true)
     try {
+      const postData = {
+        title: post.title,
+        content: post.content,
+        date: post.date,
+        status: post.published ? 'published' : 'draft',
+        is_pinned: post.is_pinned
+      }
+
       if (postId === 'new') {
-        const { error } = await supabase
-          .from('posts')
-          .insert([{
-            title: post.title,
-            content: post.content,
-            date: post.date,
-            published: post.published,
-            is_pinned: post.is_pinned
-          }])
+        const response = await fetch('/api/blog', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(postData)
+        })
 
-        if (error) throw error
+        if (!response.ok) {
+          const error = await response.text()
+          throw new Error(error)
+        }
       } else {
-        const { error } = await supabase
-          .from('posts')
-          .update({
-            title: post.title,
-            content: post.content,
-            date: post.date,
-            published: post.published,
-            is_pinned: post.is_pinned
-          })
-          .eq('id', postId)
+        const response = await fetch(`/api/blog/${postId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(postData)
+        })
 
-        if (error) throw error
+        if (!response.ok) {
+          const error = await response.text()
+          throw new Error(error)
+        }
       }
 
       router.push('/posts')
