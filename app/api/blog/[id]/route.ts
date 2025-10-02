@@ -1,32 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { writeFile, readFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
-import path from 'path'
-import type { BlogPost, BlogFormData } from '../../../types/blog'
-
-const DATA_DIR = path.join(process.cwd(), 'data')
-const POSTS_FILE = path.join(DATA_DIR, 'posts.json')
-
-async function ensureDataDir() {
-  if (!existsSync(DATA_DIR)) {
-    await mkdir(DATA_DIR, { recursive: true })
-  }
-  if (!existsSync(POSTS_FILE)) {
-    await writeFile(POSTS_FILE, JSON.stringify([]))
-  }
-}
-
-async function getPosts(): Promise<BlogPost[]> {
-  await ensureDataDir()
-  const data = await readFile(POSTS_FILE, 'utf-8')
-  return JSON.parse(data)
-}
-
-async function savePosts(posts: BlogPost[]) {
-  await ensureDataDir()
-  await writeFile(POSTS_FILE, JSON.stringify(posts, null, 2))
-}
+import { supabaseAdmin } from '@/lib/supabase'
+import type { Post } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
@@ -34,19 +9,23 @@ export async function GET(
 ) {
   const params = await context.params;
   const session = await getServerSession()
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const posts = await getPosts()
-    const post = posts.find(p => p.id === params.id)
-    
-    if (!post) {
+    const { data: post, error } = await supabaseAdmin
+      .from('posts')
+      .select('*')
+      .eq('id', params.id)
+      .single()
+
+    if (error) {
+      console.error('Supabase error:', error)
       return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
-    
+
     return NextResponse.json(post)
   } catch (error) {
     console.error('Error fetching post:', error)
@@ -60,32 +39,34 @@ export async function PUT(
 ) {
   const params = await context.params;
   const session = await getServerSession()
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const data: BlogFormData = await request.json()
-    const posts = await getPosts()
-    const index = posts.findIndex(p => p.id === params.id)
-    
-    if (index === -1) {
-      return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+    const data = await request.json()
+
+    const updateData: Partial<Post> = {
+      title: data.title,
+      content: data.content,
+      date: data.date,
+      published: data.status === 'published',
+      is_pinned: data.is_pinned || false
     }
-    
-    const updatedPost: BlogPost = {
-      ...posts[index],
-      ...data,
-      updatedAt: new Date().toISOString(),
-      publishedAt: data.status === 'published' && !posts[index].publishedAt 
-        ? new Date().toISOString() 
-        : posts[index].publishedAt
+
+    const { data: updatedPost, error } = await supabaseAdmin
+      .from('posts')
+      .update(updateData)
+      .eq('id', params.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json({ error: 'Failed to update post: ' + error.message }, { status: 500 })
     }
-    
-    posts[index] = updatedPost
-    await savePosts(posts)
-    
+
     return NextResponse.json(updatedPost)
   } catch (error) {
     console.error('Error updating post:', error)
@@ -99,21 +80,22 @@ export async function DELETE(
 ) {
   const params = await context.params;
   const session = await getServerSession()
-  
+
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const posts = await getPosts()
-    const filteredPosts = posts.filter(p => p.id !== params.id)
-    
-    if (posts.length === filteredPosts.length) {
-      return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+    const { error } = await supabaseAdmin
+      .from('posts')
+      .delete()
+      .eq('id', params.id)
+
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json({ error: 'Failed to delete post: ' + error.message }, { status: 500 })
     }
-    
-    await savePosts(filteredPosts)
-    
+
     return NextResponse.json({ message: 'Post deleted successfully' })
   } catch (error) {
     console.error('Error deleting post:', error)

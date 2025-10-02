@@ -1,4 +1,3 @@
-import Image from 'next/image'
 
 export default function Header() {
   return (
@@ -7,18 +6,21 @@ export default function Header() {
       margin: '0 auto',
       padding: '40px 20px 30px 20px'
     }}>
-      <Image 
-        src="/header.png"
-        alt="Stoopside CMS - From porch to page"
-        width={300}
-        height={75}
-        priority
-        style={{
-          width: '300px',
-          height: 'auto',
-          display: 'block'
-        }}
-      />
+      <h1 style={{
+        fontSize: '28px',
+        fontWeight: 'bold',
+        color: '#333',
+        margin: 0
+      }}>
+        AnnValeskiBlog CMS
+      </h1>
+      <p style={{
+        fontSize: '14px',
+        color: '#666',
+        marginTop: '8px'
+      }}>
+        Content Management System
+      </p>
     </div>
   )
 }

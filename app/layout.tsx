@@ -8,8 +8,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "CMS Admin",
-  description: "Content Management System for Stoopside Scribbles",
+  title: "AnnValeskiBlog CMS",
+  description: "Content Management System for AnnValeskiBlog",
 };
 
 export default function RootLayout({
