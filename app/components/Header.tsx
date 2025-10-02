@@ -1,4 +1,3 @@
-
 export default function Header() {
   return (
     <div style={{
@@ -7,12 +6,13 @@ export default function Header() {
       padding: '40px 20px 30px 20px'
     }}>
       <h1 style={{
-        fontSize: '28px',
-        fontWeight: 'bold',
-        color: '#333',
-        margin: 0
+        fontSize: '48px',
+        fontWeight: 'normal',
+        margin: 0,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif'
       }}>
-        AnnValeskiBlog CMS
+        <span style={{ color: '#8B2635' }}>annvaleski</span>
+        <span style={{ color: '#000' }}>blog-cms</span>
       </h1>
       <p style={{
         fontSize: '14px',
