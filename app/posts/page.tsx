@@ -3,7 +3,6 @@
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import Header from '@/app/components/Header'
 
 interface Post {
@@ -31,13 +30,15 @@ export default function PostsList() {
 
   const fetchPosts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*')
-        .order('is_pinned', { ascending: false })
-        .order('date', { ascending: false })
+      const response = await fetch('/api/blog', {
+        credentials: 'include'
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error('Failed to fetch posts')
+      }
+
+      const data = await response.json()
       setPosts(data || [])
     } catch (error) {
       console.error('Error fetching posts:', error)
@@ -50,12 +51,15 @@ export default function PostsList() {
     if (!confirm('Delete this post?')) return
 
     try {
-      const { error } = await supabase
-        .from('posts')
-        .delete()
-        .eq('id', id)
+      const response = await fetch(`/api/blog/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error('Failed to delete post')
+      }
+
       await fetchPosts()
     } catch (error) {
       console.error('Error deleting post:', error)
@@ -65,12 +69,21 @@ export default function PostsList() {
 
   const togglePin = async (id: string, currentPinned: boolean) => {
     try {
-      const { error } = await supabase
-        .from('posts')
-        .update({ is_pinned: !currentPinned })
-        .eq('id', id)
+      const response = await fetch(`/api/blog/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          is_pinned: !currentPinned
+        })
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error('Failed to update pin status')
+      }
+
       await fetchPosts()
     } catch (error) {
       console.error('Error toggling pin:', error)
